@@ -1,0 +1,98 @@
+import { prisma } from "@/lib/prisma";
+
+export async function getDashboardData() {
+  if (!process.env.DATABASE_URL) {
+    return {
+      currentModule: null,
+      currentDiscipline: null,
+      currentUnit: null,
+      totalHours: 0,
+      completedUnits: 0,
+      inProgressUnits: 0,
+      averageMastery: 0,
+      disciplines: []
+    };
+  }
+
+  const [
+    currentModule,
+    currentDiscipline,
+    currentUnit,
+    totalSessions,
+    completedUnits,
+    inProgressUnits,
+    mastery
+  ] = await Promise.all([
+    prisma.module.findFirst({ where: { isCurrent: true } }),
+    prisma.discipline.findFirst({
+      where: { isCurrent: true },
+      include: { module: true }
+    }),
+    prisma.unit.findFirst({
+      where: { isCurrent: true },
+      include: {
+        discipline: { include: { module: true } },
+        sessions: { orderBy: { studiedAt: "desc" }, take: 1 }
+      }
+    }),
+    prisma.studySession.aggregate({ _sum: { minutes: true } }),
+    prisma.unit.count({ where: { status: "COMPLETED" } }),
+    prisma.unit.count({ where: { status: "IN_PROGRESS" } }),
+    prisma.unit.aggregate({ _avg: { masteryLevel: true } })
+  ]);
+
+  const disciplines = await prisma.discipline.findMany({
+    orderBy: [{ module: { order: "asc" } }, { order: "asc" }],
+    include: {
+      module: true,
+      units: {
+        orderBy: { order: "asc" },
+        include: { sessions: true, materials: true }
+      }
+    }
+  });
+
+  return {
+    currentModule,
+    currentDiscipline,
+    currentUnit,
+    totalHours: Math.round(((totalSessions._sum.minutes ?? 0) / 60) * 10) / 10,
+    completedUnits,
+    inProgressUnits,
+    averageMastery: Math.round((mastery._avg.masteryLevel ?? 1) * 10) / 10,
+    disciplines
+  };
+}
+
+export async function getDisciplineBySlug(slug: string) {
+  if (!process.env.DATABASE_URL) return null;
+
+  return prisma.discipline.findUnique({
+    where: { slug },
+    include: {
+      module: true,
+      units: {
+        orderBy: { order: "asc" },
+        include: {
+          materials: { orderBy: { order: "asc" } },
+          sessions: true,
+          notes: true
+        }
+      }
+    }
+  });
+}
+
+export async function getUnitById(id: string) {
+  if (!process.env.DATABASE_URL) return null;
+
+  return prisma.unit.findUnique({
+    where: { id },
+    include: {
+      discipline: { include: { module: true } },
+      materials: { orderBy: { order: "asc" } },
+      notes: { orderBy: { createdAt: "desc" } },
+      sessions: { orderBy: { studiedAt: "desc" } }
+    }
+  });
+}

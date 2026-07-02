@@ -1,0 +1,91 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ArrowLeft, ArrowRight, BookOpen, GraduationCap } from "lucide-react";
+import { ProgressBar } from "@/components/ProgressBar";
+import { Shell } from "@/components/Shell";
+import { findModule, isModuleUnlocked, previousModule, topicSlug } from "@/lib/curriculum";
+
+export default async function ModulePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const module = findModule(slug);
+  if (!module) notFound();
+  const unlocked = isModuleUnlocked(slug);
+  const requiredModule = previousModule(slug);
+
+  return (
+    <Shell>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Link href="/#disciplinas" className="inline-flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-white">
+          <ArrowLeft size={17} />
+          Voltar para matérias
+        </Link>
+
+        {!unlocked ? (
+          <section className="premium-border mt-8 rounded-lg bg-panel/78 p-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber">Módulo bloqueado</p>
+            <h1 className="mt-3 text-balance text-3xl font-semibold text-white">{module.title} ainda não está disponível</h1>
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-400">
+              Para avançar para {module.title}, conclua primeiro {requiredModule?.title ?? "o módulo anterior"}.
+              Essa regra mantém o estudo sequencial e evita pular fundamentos importantes.
+            </p>
+            <Link
+              href={`/modulos/${requiredModule?.slug ?? "module-1"}`}
+              className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-cyan px-4 text-sm font-semibold text-graphite transition hover:bg-white"
+            >
+              Ir para o módulo anterior
+              <ArrowRight size={17} />
+            </Link>
+          </section>
+        ) : null}
+
+        {unlocked ? (
+          <>
+        <section className="mt-8">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan">{module.title}</p>
+          <h1 className="mt-3 text-balance text-4xl font-semibold text-white">{module.objective}</h1>
+          <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-300">
+            Escolha um tópico de estudo para registrar anotações, organizar materiais
+            de referência e acompanhar seu progresso.
+          </p>
+        </section>
+
+        <section className="mt-10 grid gap-6">
+          {module.disciplines.map((discipline) => (
+            <div key={discipline.title} className="premium-border rounded-lg bg-panel/78 p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/8 text-cyan">
+                  <GraduationCap size={20} />
+                </span>
+                <div>
+                  <h2 className="text-2xl font-semibold text-white">{discipline.title}</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{discipline.objective}</p>
+                </div>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {discipline.units.map((unit) => (
+                  <Link
+                    key={unit}
+                    href={`/topicos/${topicSlug(module.slug, discipline.title, unit)}`}
+                    className="group rounded-lg border border-white/10 bg-white/[0.03] p-4 transition hover:border-cyan/40 hover:bg-white/[0.06]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <BookOpen size={18} className="mt-1 shrink-0 text-cyan" />
+                      <ArrowRight className="mt-1 shrink-0 text-slate-600 transition group-hover:translate-x-1 group-hover:text-cyan" size={17} />
+                    </div>
+                    <h3 className="mt-4 font-semibold text-white">{unit}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">Página de estudo com anotações e referências.</p>
+                    <div className="mt-4">
+                      <ProgressBar value={unit === "Arrays" ? 60 : 0} />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </section>
+          </>
+        ) : null}
+      </main>
+    </Shell>
+  );
+}

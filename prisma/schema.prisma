@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AcademicStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum MasteryLevel {
+  LEVEL_1
+  LEVEL_2
+  LEVEL_3
+  LEVEL_4
+}
+
+enum MaterialType {
+  VIDEO
+  ARTICLE
+  DOCUMENTATION
+  COURSE
+  BOOK
+  LAB
+}
+
+enum ExerciseType {
+  QUIZ
+  CODE
+  ESSAY
+  LAB
+}
+
+model Module {
+  id                  String         @id @default(cuid())
+  title               String
+  objective           String
+  slug                String         @unique
+  summary             String
+  status              AcademicStatus @default(NOT_STARTED)
+  progressPercentage  Int            @default(0)
+  totalStudyHours     Float          @default(0)
+  averageMasteryLevel Float          @default(1)
+  order               Int
+  isCurrent           Boolean        @default(false)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  disciplines         Discipline[]
+}
+
+model Discipline {
+  id                 String         @id @default(cuid())
+  title              String
+  objective          String
+  slug               String         @unique
+  summary            String
+  progressPercentage Int            @default(0)
+  status             AcademicStatus @default(NOT_STARTED)
+  order              Int
+  isCurrent          Boolean        @default(false)
+  moduleId           String
+  module             Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  units              Unit[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([moduleId])
+}
+
+model Unit {
+  id                     String             @id @default(cuid())
+  title                  String
+  objective              String
+  summary                String
+  order                  Int
+  estimatedMinutes       Int
+  masteryLevel           Int                @default(1)
+  masteryDescription     String             @default("I know the topic")
+  progressPercentage     Int                @default(0)
+  status                 AcademicStatus     @default(NOT_STARTED)
+  mainMaterial           String
+  complementaryMaterials String[]
+  completionCriteria     String
+  oralExplanationExercise String
+  importantTerms         String[]
+  englishSummary         String
+  isCurrent              Boolean            @default(false)
+  disciplineId           String
+  discipline             Discipline         @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  topics                 Topic[]
+  materials              StudyMaterial[]
+  exercises              Exercise[]
+  sessions               StudySession[]
+  technicalEnglish       TechnicalEnglish[]
+  notes                  Note[]
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([disciplineId])
+}
+
+model Topic {
+  id        String     @id @default(cuid())
+  title     String
+  objective String
+  order     Int
+  unitId    String
+  unit      Unit       @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  subtopics Subtopic[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([unitId])
+}
+
+model Subtopic {
+  id        String   @id @default(cuid())
+  title     String
+  objective String
+  order     Int
+  topicId   String
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([topicId])
+}
+
+model StudyMaterial {
+  id          String       @id @default(cuid())
+  title       String
+  description String
+  type        MaterialType
+  url         String?
+  durationMin Int
+  order       Int
+  completed   Boolean      @default(false)
+  unitId      String
+  unit        Unit         @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([unitId])
+}
+
+model Exercise {
+  id          String       @id @default(cuid())
+  title       String
+  prompt      String
+  type        ExerciseType
+  difficulty  Int
+  completed   Boolean      @default(false)
+  unitId      String
+  unit        Unit         @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([unitId])
+}
+
+model StudySession {
+  id                 String   @id @default(cuid())
+  unitId             String
+  unit               Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  minutes            Int
+  whatIStudied       String
+  whatILearned       String
+  whatINeedToReview  String
+  nextStep           String
+  studiedAt          DateTime @default(now())
+  createdAt          DateTime @default(now())
+
+  @@index([unitId])
+}
+
+model TechnicalEnglish {
+  id          String   @id @default(cuid())
+  term        String
+  translation String
+  context     String
+  example     String
+  vocabulary  String
+  mastered    Boolean  @default(false)
+  unitId      String
+  unit        Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([unitId])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  unitId    String
+  unit      Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([unitId])
+}
