@@ -3,17 +3,15 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, BookOpen, GraduationCap } from "lucide-react";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Shell } from "@/components/Shell";
-import { getModuleBySlug, getModuleUnlockState } from "@/lib/academy";
-import { findModule, previousModule, topicSlug } from "@/lib/curriculum";
+import { getModuleBySlug } from "@/lib/academy";
+import { findModule, topicSlug, unitTitle } from "@/lib/curriculum";
 
 export default async function ModulePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const module = findModule(slug);
   if (!module) notFound();
   const databaseModule = await getModuleBySlug(slug);
-  const unlockState = await getModuleUnlockState(slug);
-  const unlocked = unlockState.unlocked;
-  const requiredModule = unlockState.requiredModule ?? previousModule(slug);
+  const hasDatabaseModule = Boolean(databaseModule);
   const disciplines = databaseModule?.disciplines ?? module.disciplines;
 
   return (
@@ -24,26 +22,6 @@ export default async function ModulePage({ params }: { params: Promise<{ slug: s
           Voltar para matérias
         </Link>
 
-        {!unlocked ? (
-          <section className="premium-border mt-8 rounded-lg bg-panel/78 p-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-amber">Módulo bloqueado</p>
-            <h1 className="mt-3 text-balance text-3xl font-semibold text-white">{module.title} ainda não está disponível</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-400">
-              Para avançar para {module.title}, conclua primeiro {requiredModule?.title ?? "o módulo anterior"}.
-              Essa regra mantém o estudo sequencial e evita pular fundamentos importantes.
-            </p>
-            <Link
-              href={`/modulos/${requiredModule?.slug ?? "module-1"}`}
-              className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-cyan px-4 text-sm font-semibold text-graphite transition hover:bg-white"
-            >
-              Ir para o módulo anterior
-              <ArrowRight size={17} />
-            </Link>
-          </section>
-        ) : null}
-
-        {unlocked ? (
-          <>
         <section className="mt-8">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan">{module.title}</p>
           <h1 className="mt-3 text-balance text-4xl font-semibold text-white">{module.objective}</h1>
@@ -67,10 +45,18 @@ export default async function ModulePage({ params }: { params: Promise<{ slug: s
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {discipline.units.map((unit) => {
-                  const isDatabaseUnit = typeof unit !== "string";
-                  const title = isDatabaseUnit ? unit.title : unit;
-                  const href = isDatabaseUnit ? `/unidades/${unit.id}` : `/topicos/${topicSlug(module.slug, discipline.title, unit)}`;
-                  const progress = isDatabaseUnit ? unit.progressPercentage : unit === "Arrays" ? 60 : 0;
+                  const title = unitTitle(unit);
+                  const isObjectUnit = typeof unit !== "string";
+                  const href =
+                    hasDatabaseModule && isObjectUnit && "id" in unit
+                      ? `/unidades/${unit.id}`
+                      : `/topicos/${topicSlug(module.slug, discipline.title, title)}`;
+                  const progress =
+                    hasDatabaseModule && isObjectUnit && "progressPercentage" in unit
+                      ? unit.progressPercentage
+                      : title === "Arrays"
+                        ? 60
+                        : 0;
 
                   return (
                   <Link
@@ -94,8 +80,6 @@ export default async function ModulePage({ params }: { params: Promise<{ slug: s
             </div>
           ))}
         </section>
-          </>
-        ) : null}
       </main>
     </Shell>
   );

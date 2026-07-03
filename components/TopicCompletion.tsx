@@ -1,22 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { Check, Circle, Play } from "lucide-react";
+import { setUnitStatus } from "@/app/actions/academy";
 
 type TopicStatus = "not_started" | "in_progress" | "completed";
 
 export function TopicCompletion({
   topicTitle,
   disciplineTitle,
+  unitId,
   initialStatus = "not_started"
 }: {
   topicTitle: string;
   disciplineTitle: string;
+  unitId?: string;
   initialStatus?: TopicStatus;
 }) {
   const [status, setStatus] = useState<TopicStatus>(initialStatus);
+  const [isPending, startTransition] = useTransition();
   const isInProgress = status === "in_progress";
   const isCompleted = status === "completed";
+
+  function updateStatus(nextStatus: TopicStatus) {
+    setStatus(nextStatus);
+
+    if (!unitId || nextStatus === "not_started") return;
+
+    const formData = new FormData();
+    formData.set("unitId", unitId);
+    formData.set("status", nextStatus === "completed" ? "COMPLETED" : "IN_PROGRESS");
+
+    startTransition(async () => {
+      await setUnitStatus(formData);
+    });
+  }
 
   return (
     <div
@@ -41,11 +59,12 @@ export function TopicCompletion({
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <button
           type="button"
-          onClick={() => setStatus("in_progress")}
+          onClick={() => updateStatus("in_progress")}
+          disabled={isPending}
           className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition ${
             isInProgress
               ? "border-cyan bg-cyan text-graphite"
-              : "border-white/15 bg-white/[0.04] text-white hover:border-cyan/50 hover:bg-white/10"
+              : "border-white/15 bg-white/[0.04] text-white hover:border-cyan/50 hover:bg-white/10 disabled:cursor-wait disabled:opacity-70"
           }`}
           aria-pressed={isInProgress}
         >
@@ -54,11 +73,12 @@ export function TopicCompletion({
         </button>
         <button
           type="button"
-          onClick={() => setStatus("completed")}
+          onClick={() => updateStatus("completed")}
+          disabled={isPending}
           className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition ${
             isCompleted
               ? "border-emerald bg-emerald text-graphite"
-              : "border-white/15 bg-white/[0.04] text-white hover:border-emerald/50 hover:bg-white/10"
+              : "border-white/15 bg-white/[0.04] text-white hover:border-emerald/50 hover:bg-white/10 disabled:cursor-wait disabled:opacity-70"
           }`}
           aria-pressed={isCompleted}
         >

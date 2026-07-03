@@ -11,6 +11,9 @@
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
+    "db:sync:cs193p": "tsx prisma/sync-cs193p.ts",
+    "db:cleanup:swiftui": "tsx prisma/cleanup-swiftui-fundamentals.ts",
+    "db:reset-progress": "tsx prisma/reset-progress.ts",
     "studio": "prisma studio"
   },
   "dependencies": {

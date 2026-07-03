@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, Clock3, Gauge, Layers3, Lock } from "lucide-react";
+import { ArrowRight, BookOpenCheck, Clock3, Gauge, Layers3 } from "lucide-react";
 import { MetricCard } from "@/components/MetricCard";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Shell } from "@/components/Shell";
@@ -85,12 +85,9 @@ export default async function DashboardPage() {
           </div>
           {data.modules.length ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {data.modules.map((module, index) => {
-                const previousModule = index > 0 ? data.modules[index - 1] : null;
-                const locked = previousModule ? previousModule.status !== "COMPLETED" : false;
-
-                return <ModuleCard key={module.id} module={module} locked={locked} />;
-              })}
+              {data.modules.map((module) => (
+                <ModuleCard key={module.id} module={module} />
+              ))}
             </div>
           ) : (
             <EmptyDisciplines />
@@ -103,21 +100,20 @@ export default async function DashboardPage() {
 
 type DashboardModule = Awaited<ReturnType<typeof getDashboardData>>["modules"][number];
 
-function ModuleCard({ module, locked }: { module: DashboardModule; locked: boolean }) {
+function ModuleCard({ module }: { module: DashboardModule }) {
   const units = module.disciplines.flatMap((discipline) => discipline.units);
   const completed = units.filter((unit) => unit.status === "COMPLETED").length;
   const estimated = units.reduce((sum, unit) => sum + unit.estimatedMinutes, 0);
-  const content = (
-    <>
+  return (
+    <Link
+      href={`/modulos/${module.slug}`}
+      className="premium-border group flex h-full flex-col rounded-lg bg-panel/82 p-5 transition hover:-translate-y-0.5 hover:border-cyan/40 hover:bg-panel"
+    >
       <div className="mb-5 flex items-start justify-between gap-4">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/8 text-cyan">
           <Layers3 size={21} />
         </span>
-        {locked ? (
-          <Lock className="mt-1 text-slate-600" size={19} />
-        ) : (
-          <ArrowRight className="mt-1 text-slate-500 transition group-hover:translate-x-1 group-hover:text-cyan" size={19} />
-        )}
+        <ArrowRight className="mt-1 text-slate-500 transition group-hover:translate-x-1 group-hover:text-cyan" size={19} />
       </div>
       <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{module.title}</p>
       <h3 className="mt-2 text-lg font-semibold text-white">{module.objective}</h3>
@@ -142,24 +138,6 @@ function ModuleCard({ module, locked }: { module: DashboardModule; locked: boole
           </span>
         </div>
       </div>
-      {locked ? <p className="mt-4 text-xs leading-5 text-amber">Bloqueado até concluir o módulo anterior.</p> : null}
-    </>
-  );
-
-  if (locked) {
-    return (
-      <div className="premium-border flex h-full flex-col rounded-lg bg-panel/55 p-5 opacity-75" aria-disabled="true">
-        {content}
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={`/modulos/${module.slug}`}
-      className="premium-border group flex h-full flex-col rounded-lg bg-panel/82 p-5 transition hover:-translate-y-0.5 hover:border-cyan/40 hover:bg-panel"
-    >
-      {content}
     </Link>
   );
 }
@@ -180,8 +158,8 @@ function EmptyDisciplines() {
         </span>
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {curriculum.map((module, index) => (
-          <ModulePreviewCard key={module.slug} module={module} locked={index > 0} />
+        {curriculum.map((module) => (
+          <ModulePreviewCard key={module.slug} module={module} />
         ))}
       </div>
       <p className="mt-5 text-sm leading-6 text-slate-400">
@@ -195,50 +173,29 @@ function EmptyDisciplines() {
 }
 
 function ModulePreviewCard({
-  module,
-  locked
+  module
 }: {
   module: (typeof curriculum)[number];
-  locked: boolean;
 }) {
   const content = (
     <>
       <div className="flex items-start justify-between gap-3">
-        <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${locked ? "text-slate-500" : "text-cyan"}`}>
-          {module.title}
-        </p>
-        {locked ? (
-          <Lock className="text-slate-600" size={17} />
-        ) : (
-          <ArrowRight className="text-slate-600 transition group-hover:translate-x-1 group-hover:text-cyan" size={17} />
-        )}
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan">{module.title}</p>
+        <ArrowRight className="text-slate-600 transition group-hover:translate-x-1 group-hover:text-cyan" size={17} />
       </div>
-      <p className={`mt-3 text-sm font-medium ${locked ? "text-slate-500" : "text-white"}`}>{module.objective}</p>
+      <p className="mt-3 text-sm font-medium text-white">{module.objective}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         {module.disciplines.map((discipline) => (
           <span
             key={discipline.title}
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              locked ? "bg-white/[0.04] text-slate-500" : "bg-white/8 text-slate-200"
-            }`}
+            className="rounded-full bg-white/8 px-3 py-1 text-xs font-medium text-slate-200"
           >
             {discipline.title}
           </span>
         ))}
       </div>
-      {locked ? (
-        <p className="mt-4 text-xs leading-5 text-amber">Bloqueado até concluir o módulo anterior.</p>
-      ) : null}
     </>
   );
-
-  if (locked) {
-    return (
-      <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 opacity-80" aria-disabled="true">
-        {content}
-      </div>
-    );
-  }
 
   return (
     <Link

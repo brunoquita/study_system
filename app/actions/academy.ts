@@ -84,6 +84,95 @@ export async function completeUnit(formData: FormData) {
   revalidatePath(`/unidades/${unitId}`);
 }
 
+export async function setUnitStatus(formData: FormData) {
+  if (!process.env.DATABASE_URL) return;
+
+  const unitId = String(formData.get("unitId") ?? "");
+  const status = String(formData.get("status") ?? "");
+
+  if (!unitId || !["IN_PROGRESS", "COMPLETED"].includes(status)) return;
+
+  const progressPercentage = status === "COMPLETED" ? 100 : 15;
+
+  await prisma.$transaction(async (tx) => {
+    const unit = await tx.unit.update({
+      where: { id: unitId },
+      data: {
+        status: status as "IN_PROGRESS" | "COMPLETED",
+        progressPercentage,
+        isCurrent: status === "IN_PROGRESS"
+      },
+      select: {
+        disciplineId: true,
+        discipline: {
+          select: {
+            moduleId: true
+          }
+        }
+      }
+    });
+
+    if (status === "IN_PROGRESS") {
+      await tx.unit.updateMany({
+        where: { id: { not: unitId } },
+        data: { isCurrent: false }
+      });
+    }
+
+    const disciplineUnits = await tx.unit.findMany({
+      where: { disciplineId: unit.disciplineId },
+      select: { progressPercentage: true, status: true }
+    });
+
+    const disciplineProgress = averageProgress(disciplineUnits.map((item) => item.progressPercentage));
+    await tx.discipline.update({
+      where: { id: unit.disciplineId },
+      data: {
+        progressPercentage: disciplineProgress,
+        status: aggregateStatus(disciplineUnits.map((item) => item.status))
+      }
+    });
+
+    const moduleUnits = await tx.unit.findMany({
+      where: {
+        discipline: {
+          moduleId: unit.discipline.moduleId
+        }
+      },
+      select: { progressPercentage: true, status: true, masteryLevel: true, estimatedMinutes: true }
+    });
+
+    await tx.module.update({
+      where: { id: unit.discipline.moduleId },
+      data: {
+        progressPercentage: averageProgress(moduleUnits.map((item) => item.progressPercentage)),
+        status: aggregateStatus(moduleUnits.map((item) => item.status)),
+        averageMasteryLevel: averageNumber(moduleUnits.map((item) => item.masteryLevel)),
+        totalStudyHours: Math.round((moduleUnits.reduce((sum, item) => sum + item.estimatedMinutes, 0) / 60) * 10) / 10
+      }
+    });
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/unidades/${unitId}`);
+}
+
+function averageProgress(values: number[]) {
+  if (!values.length) return 0;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
+
+function averageNumber(values: number[]) {
+  if (!values.length) return 1;
+  return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10;
+}
+
+function aggregateStatus(statuses: string[]) {
+  if (statuses.length && statuses.every((status) => status === "COMPLETED")) return "COMPLETED";
+  if (statuses.some((status) => status === "IN_PROGRESS" || status === "COMPLETED")) return "IN_PROGRESS";
+  return "NOT_STARTED";
+}
+
 export async function createNote(formData: FormData) {
   if (!process.env.DATABASE_URL) return;
 

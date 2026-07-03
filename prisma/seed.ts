@@ -1,5 +1,5 @@
 import { AcademicStatus, MaterialType, PrismaClient } from "@prisma/client";
-import { curriculum, slugify } from "../lib/curriculum";
+import { CurriculumReference, CurriculumUnit, curriculum, slugify, unitTitle } from "../lib/curriculum";
 
 const prisma = new PrismaClient();
 
@@ -11,33 +11,40 @@ const masteryDescription: Record<number, string> = {
 };
 
 function createUnit({
-  title,
+  unit,
   disciplineTitle,
   order,
   references,
   isCurrent = false
 }: {
-  title: string;
+  unit: string | CurriculumUnit;
   disciplineTitle: string;
   order: number;
-  references: string[];
+  references: Array<string | CurriculumReference>;
   isCurrent?: boolean;
 }) {
+  const title = unitTitle(unit);
+  const unitReferences = typeof unit === "string" ? references : unit.references ?? references;
+  const primaryReference = unitReferences[0];
+  const primaryTitle = referenceTitle(primaryReference);
   const progressPercentage = isCurrent ? 60 : 0;
   const masteryLevel = isCurrent ? 2 : 1;
 
   return {
     title,
-    objective: `Understand ${title}, practice it deliberately, and explain how it applies inside ${disciplineTitle}.`,
+    objective:
+      typeof unit === "string"
+        ? `Understand ${title}, practice it deliberately, and explain how it applies inside ${disciplineTitle}.`
+        : unit.objective ?? `Understand ${title}, practice it deliberately, and explain how it applies inside ${disciplineTitle}.`,
     summary: `${title} study unit for ${disciplineTitle}, focused on references, notes, and personal study control.`,
     order,
-    estimatedMinutes: 180,
+    estimatedMinutes: typeof unit === "string" ? 180 : unit.estimatedMinutes ?? 180,
     masteryLevel,
     masteryDescription: masteryDescription[masteryLevel],
     progressPercentage,
     status: isCurrent ? AcademicStatus.IN_PROGRESS : AcademicStatus.NOT_STARTED,
-    mainMaterial: `${references[0]}: primary study path for ${title}.`,
-    complementaryMaterials: references.slice(1),
+    mainMaterial: `${primaryTitle}: primary study path for ${title}.`,
+    complementaryMaterials: unitReferences.slice(1).map(referenceTitle),
     completionCriteria: `Review the main material, organize references, write useful notes, and mark ${title} as completed when you feel ready to move on.`,
     isCurrent,
     topics: {
@@ -88,11 +95,12 @@ function createUnit({
       ]
     },
     materials: {
-      create: references.map((reference, index) => ({
-        title: reference,
-        description: `${reference} reference material for ${title}.`,
-        type: index === 0 ? MaterialType.COURSE : MaterialType.DOCUMENTATION,
-        durationMin: index === 0 ? 60 : 30,
+      create: unitReferences.map((reference, index) => ({
+        title: referenceTitle(reference),
+        description: referenceDescription(reference, title),
+        type: referenceType(reference, index),
+        url: typeof reference === "string" ? undefined : reference.url,
+        durationMin: typeof reference === "string" ? (index === 0 ? 60 : 30) : reference.durationMin ?? (index === 0 ? 60 : 30),
         order: index + 1
       }))
     },
@@ -114,6 +122,26 @@ function createUnit({
         : []
     }
   };
+}
+
+function referenceTitle(reference: string | CurriculumReference) {
+  return typeof reference === "string" ? reference : reference.title;
+}
+
+function referenceDescription(reference: string | CurriculumReference, unitTitle: string) {
+  if (typeof reference === "string") {
+    return `${reference} reference material for ${unitTitle}.`;
+  }
+
+  return reference.description ?? `${reference.title} reference material for ${unitTitle}.`;
+}
+
+function referenceType(reference: string | CurriculumReference, index: number) {
+  if (typeof reference === "string") {
+    return index === 0 ? MaterialType.COURSE : MaterialType.DOCUMENTATION;
+  }
+
+  return reference.type ? MaterialType[reference.type] : index === 0 ? MaterialType.COURSE : MaterialType.DOCUMENTATION;
 }
 
 async function main() {
@@ -141,13 +169,13 @@ async function main() {
         order: disciplineIndex + 1,
         isCurrent: isCurrentDiscipline,
         units: {
-          create: discipline.units.map((unitTitle, unitIndex) =>
+          create: discipline.units.map((unit, unitIndex) =>
             createUnit({
-              title: unitTitle,
+              unit,
               disciplineTitle: discipline.title,
               order: unitIndex + 1,
               references: discipline.references,
-              isCurrent: moduleIndex === 0 && disciplineIndex === 0 && unitTitle === "Arrays"
+              isCurrent: moduleIndex === 0 && disciplineIndex === 0 && unitTitle(unit) === "Arrays"
             })
           )
         }

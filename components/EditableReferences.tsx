@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Save, X } from "lucide-react";
+import { ExternalLink, Pencil, Plus, Save, X } from "lucide-react";
 
 type EditableReference = {
   title: string;
-  description: string;
+  description?: string;
+  url?: string;
 };
 
 type InitialReference = string | EditableReference;
@@ -32,6 +33,7 @@ export function EditableReferences({
   );
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDescription, setDraftDescription] = useState("");
+  const [draftUrl, setDraftUrl] = useState("");
 
   function updateReference(index: number, field: keyof EditableReference, value: string) {
     setReferences((current) =>
@@ -48,11 +50,13 @@ export function EditableReferences({
   function addReference() {
     const title = draftTitle.trim();
     const description = draftDescription.trim();
+    const url = draftUrl.trim();
     if (!title) return;
 
-    setReferences((current) => [...current, { title, description }]);
+    setReferences((current) => [...current, { title, description, url: url || undefined }]);
     setDraftTitle("");
     setDraftDescription("");
+    setDraftUrl("");
   }
 
   if (editing) {
@@ -79,12 +83,19 @@ export function EditableReferences({
                 </button>
               </div>
               <textarea
-                value={reference.description}
+                value={reference.description ?? ""}
                 onChange={(event) => updateReference(index, "description", event.target.value)}
                 rows={3}
                 placeholder="Descrição, link, observações ou como usar este material..."
                 className="mt-2 w-full resize-y rounded-lg border border-white/10 bg-white/[0.04] p-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 focus:border-cyan"
                 aria-label={`Descrição do material ${index + 1}`}
+              />
+              <input
+                value={reference.url ?? ""}
+                onChange={(event) => updateReference(index, "url", event.target.value)}
+                placeholder="URL do material ou vídeo"
+                className="mt-2 min-h-11 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan"
+                aria-label={`URL do material ${index + 1}`}
               />
             </div>
           ))}
@@ -105,6 +116,12 @@ export function EditableReferences({
               rows={3}
               placeholder="Descrição, link, objetivo ou observações..."
               className="resize-y rounded-lg border border-white/10 bg-white/[0.04] p-3 text-sm leading-6 text-white outline-none placeholder:text-slate-500 focus:border-cyan"
+            />
+            <input
+              value={draftUrl}
+              onChange={(event) => setDraftUrl(event.target.value)}
+              placeholder="URL do material ou vídeo"
+              className="min-h-11 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan"
             />
             <div className="flex justify-end">
               <button
@@ -144,6 +161,17 @@ export function EditableReferences({
             <p className="font-semibold text-white">{reference.title}</p>
             {reference.description ? (
               <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-400">{reference.description}</p>
+            ) : null}
+            {reference.url ? (
+              <a
+                href={reference.url}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-cyan transition hover:text-white"
+              >
+                Abrir material
+                <ExternalLink size={15} />
+              </a>
             ) : null}
           </div>
         ))}
