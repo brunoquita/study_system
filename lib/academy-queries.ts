@@ -101,6 +101,29 @@ export async function getDisciplineBySlug(slug: string) {
   }
 }
 
+export async function getModuleBySlug(slug: string) {
+  if (!process.env.DATABASE_URL) return null;
+
+  try {
+    return await prisma.module.findUnique({
+      where: { slug },
+      include: {
+        disciplines: {
+          orderBy: { order: "asc" },
+          include: {
+            units: {
+              orderBy: { order: "asc" }
+            }
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Failed to load module", error);
+    return null;
+  }
+}
+
 export async function getModuleUnlockState(slug: string) {
   if (!process.env.DATABASE_URL) {
     return {

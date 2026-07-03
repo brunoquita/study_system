@@ -48,7 +48,16 @@ export default async function UnitPage({ params }: { params: Promise<{ id: strin
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-6">
-            <TopicNotes topicTitle={unit.title} />
+            <TopicNotes
+              topicTitle={unit.title}
+              unitId={unit.id}
+              initialNotes={unit.notes.map((note) => ({
+                id: note.id,
+                title: note.title,
+                body: note.body,
+                createdAt: note.createdAt
+              }))}
+            />
 
             <Panel title="Materiais de referência" icon={<NotebookPen size={20} />}>
               <EditableReferences

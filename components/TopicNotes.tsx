@@ -1,22 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState, useTransition } from "react";
 import { Check, FilePlus2, Plus } from "lucide-react";
+import { createNote } from "@/app/actions/academy";
 
-export function TopicNotes({ topicTitle }: { topicTitle: string }) {
+type PersistedNote = {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: Date | string;
+};
+
+export function TopicNotes({
+  topicTitle,
+  unitId,
+  initialNotes = []
+}: {
+  topicTitle: string;
+  unitId?: string;
+  initialNotes?: PersistedNote[];
+}) {
   const [draft, setDraft] = useState("");
-  const [notes, setNotes] = useState<string[]>([]);
+  const [notes, setNotes] = useState<PersistedNote[]>(initialNotes);
+  const [isPending, startTransition] = useTransition();
 
-  function addNote() {
+  function addLocalNote(value: string) {
+    setNotes((current) => [
+      {
+        id: `local-${Date.now()}`,
+        title: "Anotação de estudo",
+        body: value,
+        createdAt: new Date().toISOString()
+      },
+      ...current
+    ]);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     const value = draft.trim();
     if (!value) return;
 
-    setNotes((current) => [value, ...current]);
-    setDraft("");
+    if (!unitId) {
+      addLocalNote(value);
+      setDraft("");
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      await createNote(formData);
+      addLocalNote(value);
+      setDraft("");
+    });
   }
 
   return (
-    <section className="rounded-lg border border-cyan/20 bg-cyan/[0.03] p-4 sm:p-5">
+    <form onSubmit={handleSubmit} className="rounded-lg border border-cyan/20 bg-cyan/[0.03] p-4 sm:p-5">
+      <input type="hidden" name="unitId" value={unitId ?? ""} />
+      <input type="hidden" name="title" value="Anotação de estudo" />
+
       <div className="mb-4 flex items-start gap-3">
         <span className="mt-1 text-cyan">
           <FilePlus2 size={19} />
@@ -30,6 +74,7 @@ export function TopicNotes({ topicTitle }: { topicTitle: string }) {
       </div>
 
       <textarea
+        name="body"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         rows={7}
@@ -39,31 +84,31 @@ export function TopicNotes({ topicTitle }: { topicTitle: string }) {
 
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs leading-5 text-slate-500">
-          Rascunho da sessão atual. Com o banco conectado, isso pode virar nota persistida.
+          {unitId ? "Anotação salva no banco da plataforma." : "Rascunho temporário desta página."}
         </p>
         <button
-          type="button"
-          onClick={addNote}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-4 text-sm font-semibold text-graphite transition hover:bg-white"
+          type="submit"
+          disabled={isPending}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-cyan px-4 text-sm font-semibold text-graphite transition hover:bg-white disabled:cursor-wait disabled:opacity-70"
         >
           <Plus size={16} />
-          Salvar anotação
+          {isPending ? "Salvando..." : "Salvar anotação"}
         </button>
       </div>
 
       {notes.length ? (
         <div className="mt-4 grid gap-3">
-          {notes.map((note, index) => (
-            <article key={`${note}-${index}`} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+          {notes.map((note) => (
+            <article key={note.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
               <p className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald">
                 <Check size={14} />
                 Anotação salva
               </p>
-              <p className="whitespace-pre-line text-sm leading-6 text-slate-300">{note}</p>
+              <p className="whitespace-pre-line text-sm leading-6 text-slate-300">{note.body}</p>
             </article>
           ))}
         </div>
       ) : null}
-    </section>
+    </form>
   );
 }

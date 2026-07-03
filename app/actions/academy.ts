@@ -88,7 +88,7 @@ export async function createNote(formData: FormData) {
   if (!process.env.DATABASE_URL) return;
 
   const unitId = String(formData.get("unitId") ?? "");
-  const title = String(formData.get("title") ?? "").trim();
+  const title = String(formData.get("title") ?? "Anotação de estudo").trim();
   const body = String(formData.get("body") ?? "").trim();
 
   if (!unitId || !title || !body) return;
@@ -97,6 +97,7 @@ export async function createNote(formData: FormData) {
     data: { unitId, title, body }
   });
 
+  revalidatePath("/");
   revalidatePath(`/unidades/${unitId}`);
 }
 

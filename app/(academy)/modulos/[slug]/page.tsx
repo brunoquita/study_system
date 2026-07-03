@@ -3,16 +3,18 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, BookOpen, GraduationCap } from "lucide-react";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Shell } from "@/components/Shell";
-import { getModuleUnlockState } from "@/lib/academy";
+import { getModuleBySlug, getModuleUnlockState } from "@/lib/academy";
 import { findModule, previousModule, topicSlug } from "@/lib/curriculum";
 
 export default async function ModulePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const module = findModule(slug);
   if (!module) notFound();
+  const databaseModule = await getModuleBySlug(slug);
   const unlockState = await getModuleUnlockState(slug);
   const unlocked = unlockState.unlocked;
   const requiredModule = unlockState.requiredModule ?? previousModule(slug);
+  const disciplines = databaseModule?.disciplines ?? module.disciplines;
 
   return (
     <Shell>
@@ -52,7 +54,7 @@ export default async function ModulePage({ params }: { params: Promise<{ slug: s
         </section>
 
         <section className="mt-10 grid gap-6">
-          {module.disciplines.map((discipline) => (
+          {disciplines.map((discipline) => (
             <div key={discipline.title} className="premium-border rounded-lg bg-panel/78 p-5 sm:p-6">
               <div className="flex items-start gap-3">
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/8 text-cyan">
@@ -64,23 +66,30 @@ export default async function ModulePage({ params }: { params: Promise<{ slug: s
                 </div>
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {discipline.units.map((unit) => (
+                {discipline.units.map((unit) => {
+                  const isDatabaseUnit = typeof unit !== "string";
+                  const title = isDatabaseUnit ? unit.title : unit;
+                  const href = isDatabaseUnit ? `/unidades/${unit.id}` : `/topicos/${topicSlug(module.slug, discipline.title, unit)}`;
+                  const progress = isDatabaseUnit ? unit.progressPercentage : unit === "Arrays" ? 60 : 0;
+
+                  return (
                   <Link
-                    key={unit}
-                    href={`/topicos/${topicSlug(module.slug, discipline.title, unit)}`}
+                    key={title}
+                    href={href}
                     className="group rounded-lg border border-white/10 bg-white/[0.03] p-4 transition hover:border-cyan/40 hover:bg-white/[0.06]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <BookOpen size={18} className="mt-1 shrink-0 text-cyan" />
                       <ArrowRight className="mt-1 shrink-0 text-slate-600 transition group-hover:translate-x-1 group-hover:text-cyan" size={17} />
                     </div>
-                    <h3 className="mt-4 font-semibold text-white">{unit}</h3>
+                    <h3 className="mt-4 font-semibold text-white">{title}</h3>
                     <p className="mt-2 text-sm leading-6 text-slate-400">Página de estudo com anotações e referências.</p>
                     <div className="mt-4">
-                      <ProgressBar value={unit === "Arrays" ? 60 : 0} />
+                      <ProgressBar value={progress} />
                     </div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
