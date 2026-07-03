@@ -8,21 +8,27 @@ type EditableReference = {
   description: string;
 };
 
+type InitialReference = string | EditableReference;
+
 export function EditableReferences({
   initialReferences,
   topicTitle,
   disciplineTitle
 }: {
-  initialReferences: string[];
+  initialReferences: InitialReference[];
   topicTitle: string;
   disciplineTitle: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [references, setReferences] = useState<EditableReference[]>(
-    initialReferences.map((reference) => ({
-      title: reference,
-      description: `Use como referência para estudar ${topicTitle} dentro de ${disciplineTitle}.`
-    }))
+    initialReferences.map((reference) =>
+      typeof reference === "string"
+        ? {
+            title: reference,
+            description: `Use como referência para estudar ${topicTitle} dentro de ${disciplineTitle}.`
+          }
+        : reference
+    )
   );
   const [draftTitle, setDraftTitle] = useState("");
   const [draftDescription, setDraftDescription] = useState("");

@@ -117,21 +117,3 @@ export async function toggleMaterial(formData: FormData) {
   revalidatePath("/");
   if (unitId) revalidatePath(`/unidades/${unitId}`);
 }
-
-export async function toggleExercise(formData: FormData) {
-  if (!process.env.DATABASE_URL) return;
-
-  const exerciseId = String(formData.get("exerciseId") ?? "");
-  const unitId = String(formData.get("unitId") ?? "");
-  const completed = String(formData.get("completed") ?? "") === "true";
-
-  if (!exerciseId) return;
-
-  await prisma.exercise.update({
-    where: { id: exerciseId },
-    data: { completed: !completed }
-  });
-
-  revalidatePath("/");
-  if (unitId) revalidatePath(`/unidades/${unitId}`);
-}

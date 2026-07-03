@@ -29,13 +29,6 @@ enum MaterialType {
   LAB
 }
 
-enum ExerciseType {
-  QUIZ
-  CODE
-  ESSAY
-  LAB
-}
-
 model Module {
   id                  String         @id @default(cuid())
   title               String
@@ -86,17 +79,12 @@ model Unit {
   mainMaterial           String
   complementaryMaterials String[]
   completionCriteria     String
-  oralExplanationExercise String
-  importantTerms         String[]
-  englishSummary         String
   isCurrent              Boolean            @default(false)
   disciplineId           String
   discipline             Discipline         @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
   topics                 Topic[]
   materials              StudyMaterial[]
-  exercises              Exercise[]
   sessions               StudySession[]
-  technicalEnglish       TechnicalEnglish[]
   notes                  Note[]
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
@@ -148,21 +136,6 @@ model StudyMaterial {
   @@index([unitId])
 }
 
-model Exercise {
-  id          String       @id @default(cuid())
-  title       String
-  prompt      String
-  type        ExerciseType
-  difficulty  Int
-  completed   Boolean      @default(false)
-  unitId      String
-  unit        Unit         @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-
-  @@index([unitId])
-}
-
 model StudySession {
   id                 String   @id @default(cuid())
   unitId             String
@@ -174,22 +147,6 @@ model StudySession {
   nextStep           String
   studiedAt          DateTime @default(now())
   createdAt          DateTime @default(now())
-
-  @@index([unitId])
-}
-
-model TechnicalEnglish {
-  id          String   @id @default(cuid())
-  term        String
-  translation String
-  context     String
-  example     String
-  vocabulary  String
-  mastered    Boolean  @default(false)
-  unitId      String
-  unit        Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
   @@index([unitId])
 }
