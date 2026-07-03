@@ -1,12 +1,21 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { GraduationCap, LockKeyhole } from "lucide-react";
 import { login } from "@/app/login/actions";
+import { AUTH_COOKIE, isValidSession } from "@/lib/auth";
 
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const params = await searchParams;
+  const next = safeRedirectPath(params.next ?? "/");
+  const cookieStore = await cookies();
+
+  if (isValidSession(cookieStore.get(AUTH_COOKIE)?.value)) {
+    redirect(next);
+  }
 
   return (
     <main className="grid min-h-screen place-items-center px-4 py-10">
@@ -22,6 +31,8 @@ export default async function LoginPage({
         </div>
 
         <form action={login} className="grid gap-4">
+          <input type="hidden" name="next" value={next} />
+
           <label className="grid gap-2 text-sm font-medium text-slate-300">
             Usuário
             <input
@@ -56,4 +67,12 @@ export default async function LoginPage({
       </section>
     </main>
   );
+}
+
+function safeRedirectPath(value: string) {
+  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/login")) {
+    return "/";
+  }
+
+  return value;
 }

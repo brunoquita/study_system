@@ -7,10 +7,11 @@ import { AUTH_COOKIE, authConfig } from "@/lib/auth";
 export async function login(formData: FormData) {
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const redirectTo = safeRedirectPath(String(formData.get("next") ?? "/"));
   const config = authConfig();
 
   if (username !== config.username || password !== config.password) {
-    redirect("/login?error=1");
+    redirect(`/login?error=1&next=${encodeURIComponent(redirectTo)}`);
   }
 
   const cookieStore = await cookies();
@@ -22,11 +23,19 @@ export async function login(formData: FormData) {
     maxAge: 60 * 60 * 24 * 30
   });
 
-  redirect("/");
+  redirect(redirectTo);
 }
 
 export async function logout() {
   const cookieStore = await cookies();
   cookieStore.delete(AUTH_COOKIE);
   redirect("/login");
+}
+
+function safeRedirectPath(value: string) {
+  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/login")) {
+    return "/";
+  }
+
+  return value;
 }
