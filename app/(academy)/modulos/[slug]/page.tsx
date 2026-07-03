@@ -3,14 +3,16 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, BookOpen, GraduationCap } from "lucide-react";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Shell } from "@/components/Shell";
-import { findModule, isModuleUnlocked, previousModule, topicSlug } from "@/lib/curriculum";
+import { getModuleUnlockState } from "@/lib/academy";
+import { findModule, previousModule, topicSlug } from "@/lib/curriculum";
 
 export default async function ModulePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const module = findModule(slug);
   if (!module) notFound();
-  const unlocked = isModuleUnlocked(slug);
-  const requiredModule = previousModule(slug);
+  const unlockState = await getModuleUnlockState(slug);
+  const unlocked = unlockState.unlocked;
+  const requiredModule = unlockState.requiredModule ?? previousModule(slug);
 
   return (
     <Shell>

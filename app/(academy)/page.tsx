@@ -1,10 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookOpenCheck, Clock3, Gauge, Layers3, Lock } from "lucide-react";
-import { DisciplineCard } from "@/components/DisciplineCard";
 import { MetricCard } from "@/components/MetricCard";
+import { ProgressBar } from "@/components/ProgressBar";
 import { Shell } from "@/components/Shell";
-import { getDashboardData } from "@/lib/academy";
+import { formatMinutes, getDashboardData } from "@/lib/academy";
 import { curriculum } from "@/lib/curriculum";
 
 export const dynamic = "force-dynamic";
@@ -76,18 +76,21 @@ export default async function DashboardPage() {
           <div className="mb-7 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
               <p className="text-sm font-medium text-cyan">Matérias</p>
-              <h2 className="mt-2 text-3xl font-semibold text-white">Disciplinas do programa</h2>
+              <h2 className="mt-2 text-3xl font-semibold text-white">Módulos do programa</h2>
             </div>
             <p className="max-w-xl text-sm leading-6 text-slate-400">
               Conteúdo organizado como uma plataforma pessoal de estudos, com módulos,
               tópicos, materiais e anotações por unidade.
             </p>
           </div>
-          {data.disciplines.length ? (
+          {data.modules.length ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {data.disciplines.map((discipline) => (
-                <DisciplineCard key={discipline.id} discipline={discipline} />
-              ))}
+              {data.modules.map((module, index) => {
+                const previousModule = index > 0 ? data.modules[index - 1] : null;
+                const locked = previousModule ? previousModule.status !== "COMPLETED" : false;
+
+                return <ModuleCard key={module.id} module={module} locked={locked} />;
+              })}
             </div>
           ) : (
             <EmptyDisciplines />
@@ -95,6 +98,69 @@ export default async function DashboardPage() {
         </section>
       </main>
     </Shell>
+  );
+}
+
+type DashboardModule = Awaited<ReturnType<typeof getDashboardData>>["modules"][number];
+
+function ModuleCard({ module, locked }: { module: DashboardModule; locked: boolean }) {
+  const units = module.disciplines.flatMap((discipline) => discipline.units);
+  const completed = units.filter((unit) => unit.status === "COMPLETED").length;
+  const estimated = units.reduce((sum, unit) => sum + unit.estimatedMinutes, 0);
+  const content = (
+    <>
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/8 text-cyan">
+          <Layers3 size={21} />
+        </span>
+        {locked ? (
+          <Lock className="mt-1 text-slate-600" size={19} />
+        ) : (
+          <ArrowRight className="mt-1 text-slate-500 transition group-hover:translate-x-1 group-hover:text-cyan" size={19} />
+        )}
+      </div>
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{module.title}</p>
+      <h3 className="mt-2 text-lg font-semibold text-white">{module.objective}</h3>
+      <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">{module.summary}</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {module.disciplines.map((discipline) => (
+          <span key={discipline.id} className="rounded-full bg-white/[0.05] px-3 py-1 text-xs font-medium text-slate-300">
+            {discipline.title}
+          </span>
+        ))}
+      </div>
+      <div className="mt-auto pt-6">
+        <ProgressBar value={module.progressPercentage} />
+        <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-300">
+          <span className="flex items-center gap-2">
+            <BookOpenCheck size={16} className="text-emerald" />
+            {completed}/{units.length} unidades
+          </span>
+          <span className="flex items-center gap-2">
+            <Clock3 size={16} className="text-amber" />
+            {formatMinutes(estimated)}
+          </span>
+        </div>
+      </div>
+      {locked ? <p className="mt-4 text-xs leading-5 text-amber">Bloqueado até concluir o módulo anterior.</p> : null}
+    </>
+  );
+
+  if (locked) {
+    return (
+      <div className="premium-border flex h-full flex-col rounded-lg bg-panel/55 p-5 opacity-75" aria-disabled="true">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={`/modulos/${module.slug}`}
+      className="premium-border group flex h-full flex-col rounded-lg bg-panel/82 p-5 transition hover:-translate-y-0.5 hover:border-cyan/40 hover:bg-panel"
+    >
+      {content}
+    </Link>
   );
 }
 

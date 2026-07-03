@@ -10,7 +10,7 @@ export async function getDashboardData() {
       completedUnits: 0,
       inProgressUnits: 0,
       averageMastery: 0,
-      disciplines: []
+      modules: []
     };
   }
 
@@ -41,13 +41,17 @@ export async function getDashboardData() {
     prisma.unit.aggregate({ _avg: { masteryLevel: true } })
   ]);
 
-  const disciplines = await prisma.discipline.findMany({
-    orderBy: [{ module: { order: "asc" } }, { order: "asc" }],
+  const modules = await prisma.module.findMany({
+    orderBy: { order: "asc" },
     include: {
-      module: true,
-      units: {
+      disciplines: {
         orderBy: { order: "asc" },
-        include: { sessions: true, materials: true }
+        include: {
+          units: {
+            orderBy: { order: "asc" },
+            include: { sessions: true, materials: true }
+          }
+        }
       }
     }
   });
@@ -60,7 +64,7 @@ export async function getDashboardData() {
     completedUnits,
     inProgressUnits,
     averageMastery: Math.round((mastery._avg.masteryLevel ?? 1) * 10) / 10,
-    disciplines
+    modules
   };
 }
 
@@ -81,6 +85,33 @@ export async function getDisciplineBySlug(slug: string) {
       }
     }
   });
+}
+
+export async function getModuleUnlockState(slug: string) {
+  if (!process.env.DATABASE_URL) {
+    return {
+      unlocked: slug === "module-1",
+      requiredModule: null
+    };
+  }
+
+  const module = await prisma.module.findUnique({ where: { slug } });
+  if (!module) {
+    return {
+      unlocked: false,
+      requiredModule: null
+    };
+  }
+
+  const previousModule = await prisma.module.findFirst({
+    where: { order: module.order - 1 },
+    select: { title: true, slug: true, status: true }
+  });
+
+  return {
+    unlocked: !previousModule || previousModule.status === "COMPLETED",
+    requiredModule: previousModule
+  };
 }
 
 export async function getUnitById(id: string) {
